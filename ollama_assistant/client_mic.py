@@ -2,13 +2,24 @@ from builtins import int, print
 import io
 import sounddevice as sd
 import scipy.io.wavfile as wav
+from breadboard import check_button
 
-def record_audio(duration=5, fs=16000):
-    print("Recording...")
+def record_audio(duration=30, fs=16000):
+    button_monitor = check_button() # checks state
+    print("Button pressed! Recording...")
     audio = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
-    sd.wait()  # Wait until recording is finished
-    print("Recording complete.")
-
+    
+    recording_started = False
+    while True:
+        button_state = next(button_monitor)
+        if button_state == 1 and not recording_started:
+            recording_started = True
+        elif button_state == 0 and recording_started:
+            break
+    
+    print("Button released! Recording complete.")
+    sd.stop()
+    
     # Save audio to in-memory wav file
     wav_io = io.BytesIO()
     wav.write(wav_io, fs, audio)
@@ -30,5 +41,7 @@ def send_audio(audio_io):
         return None
     
 if __name__ == "__main__":
-    audio_data = record_audio(duration=5)  # Record 5 seconds; adjust if needed
-    send_audio(audio_data)
+    while True:
+        audio_data = record_audio(duration=30)
+        if audio_data:
+            send_audio(audio_data)
